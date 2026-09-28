@@ -1,10 +1,10 @@
-# Qwickbot: AI chatbot SaaS za uslužne biznise
+# AtriBot: AI chatbot SaaS za uslužne biznise
 
-**Live:** [app.qwickbotai.com](https://app.qwickbotai.com) · **Widget u produkciji:** [atrigen.rs](https://atrigen.rs)
+**Live:** [app.atribotai.com](https://app.atribotai.com) · **Widget u produkciji:** [atrigen.rs](https://atrigen.rs)
 
-Qwickbot je multi-tenant SaaS koji uslužnim biznisima (saloni, stomatolozi, agencije, servisi) daje AI asistenta. Asistent odgovara klijentima na sajtu, WhatsApp-u i Instagramu, pravi ponude, hvata leadove i zakazuje termine direktno u Google Calendar. Odgovara isključivo iz baze znanja tog biznisa. Ako odgovor nije u bazi, ne izmišlja nego to jasno kaže.
+AtriBot je multi-tenant SaaS koji uslužnim biznisima (saloni, stomatolozi, agencije, servisi) daje AI asistenta. Asistent odgovara klijentima na sajtu, WhatsApp-u i Instagramu, pravi ponude, hvata leadove i zakazuje termine direktno u Google Calendar. Odgovara isključivo iz baze znanja tog biznisa. Ako odgovor nije u bazi, ne izmišlja nego to jasno kaže.
 
-![Qwickbot landing](./screenshots/01-landing.webp)
+![AtriBot landing](./screenshots/01-landing.webp)
 
 ## Tech stack
 
