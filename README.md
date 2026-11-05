@@ -1,81 +1,59 @@
-# AtriBot: AI chatbot SaaS za uslužne biznise
+# AtriBot
 
-**Live:** [app.atribotai.com](https://app.atribotai.com) · **Widget u produkciji:** [atrigen.rs](https://atrigen.rs)
+AtriBot is an AI assistant for service businesses: salons, dental clinics, repair shops and the like. It sits on the business's website, answers customer questions from the business's own material, and lets the owner know when someone is ready to buy or book.
 
-AtriBot je multi-tenant SaaS koji uslužnim biznisima (saloni, stomatolozi, agencije, servisi) daje AI asistenta. Asistent odgovara klijentima na sajtu, WhatsApp-u i Instagramu, pravi ponude, hvata leadove i zakazuje termine direktno u Google Calendar. Odgovara isključivo iz baze znanja tog biznisa. Ako odgovor nije u bazi, ne izmišlja nego to jasno kaže.
+Live at [atribotai.com](https://atribotai.com). The agency site [atrigen.rs](https://atrigen.rs) runs it in production.
 
-![AtriBot landing](./screenshots/01-landing.webp)
+The code is private. This repository describes what the product does and how it is built.
 
-## Tech stack
+## What it does
 
-![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?style=flat-square&logo=cloudflare&logoColor=white)
-![Cloudflare D1](https://img.shields.io/badge/Cloudflare-D1-F38020?style=flat-square&logo=cloudflare&logoColor=white)
-![Cloudflare Vectorize](https://img.shields.io/badge/Cloudflare-Vectorize-F38020?style=flat-square&logo=cloudflare&logoColor=white)
-![Cloudflare KV](https://img.shields.io/badge/Cloudflare-KV-F38020?style=flat-square&logo=cloudflare&logoColor=white)
-![Cloudflare R2](https://img.shields.io/badge/Cloudflare-R2-F38020?style=flat-square&logo=cloudflare&logoColor=white)
-![Workers AI](https://img.shields.io/badge/Cloudflare-Workers_AI-F38020?style=flat-square&logo=cloudflare&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
-![Astro](https://img.shields.io/badge/Astro-Dashboard-FF5D01?style=flat-square&logo=astro&logoColor=white)
-![Go](https://img.shields.io/badge/Go-WhatsApp_shim-00ADD8?style=flat-square&logo=go&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-VPS_stack-2496ED?style=flat-square&logo=docker&logoColor=white)
-![Google Calendar](https://img.shields.io/badge/Google-Calendar_API-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)
-![Resend](https://img.shields.io/badge/Resend-Email-000000?style=flat-square)
+- The business adds one script tag to its site and gets a chat window in its own colors, with its own avatar and greeting.
+- The assistant answers only from what the business has given it: service descriptions, price lists, text, or pages imported from its website. If the answer is not there, it says so instead of guessing.
+- The conversation carries over as the visitor moves from page to page.
+- When a visitor leaves contact details or shows clear intent, the owner gets an email with the whole conversation.
+- The owner has a dashboard with the conversations, the knowledge base, and the look and wording of the chat window.
+- Answers are in Serbian, the market it was built for.
 
-## Šta radi
+The website is the main channel today. WhatsApp and Instagram are planned on the same knowledge base and the same conversation logic.
 
-- **Widget za sajt:** jedna `<script>` linija. Vanilla TypeScript u zatvorenom Shadow DOM-u, bez framework-a i bez `innerHTML` (Trusted Types friendly). Razgovor preživljava navigaciju između stranica, a slanje fajlova radi preko drag & drop-a i paste-a.
-- **Više kanala, jedan mozak:** sajt, WhatsApp (QR pairing) i Instagram DM koriste istu bazu znanja i isti tok razgovora.
-- **Zakazivanje termina:** Google Calendar OAuth, predlog više slobodnih termina, razumevanje prirodnog jezika („sutra posle podne", „može malo kasnije") i potvrda mejlom klijentu.
-- **Lead capture:** prepoznaje zainteresovanog klijenta i vlasniku odmah šalje mejl sa transkriptom razgovora.
-- **Fajlovi i slike:** multimodalni router šalje slike vision modelu, a dokumente tekstualnom. Validacija ide po magic bajtovima, ne po ekstenziji.
-- **Dashboard za vlasnika:** razgovori, baza znanja, prilagođavanje widget-a sa live preview-om (boja brenda sa auto-kontrastom, avatar), integracije i ograničenja teme.
+## How answers are found
 
-## AI i baza znanja (RAG)
+The knowledge base is split into sections and indexed in two ways: by meaning, with vector search, and by exact words, with keyword search. The two result lists are merged, a reranking model puts the candidates in order, and only the best few go into the prompt. If even the best match is weak, the assistant does not answer from it. This is what keeps it from inventing prices or opening hours.
 
-- **Contextual retrieval:** svaki chunk dobija kontekst dokumenta pre embedovanja
-- **Hibridna pretraga:** vektorska (Vectorize) i BM25 (SQLite FTS5) spojene u jedan rezultat
-- **Reranker** (bge-reranker) nad kandidatima, pa **abstention prag**: kad nema dovoljno dobrog izvora, bot kaže da ne zna umesto da halucinira
-- **Layered context prompt:** XML envelope sa jasnom hijerarhijom poverenja (sistemska pravila > stanje razgovora > znanje > poruka korisnika), otporan na prompt injection
-- **LLM fallback lanac** sa više provajdera, pa kvar jednog provajdera ne ruši bota
-- Uvoz znanja iz URL-a, sitemap-a ili teksta, sa pregledom pre ubacivanja
+The prompt keeps the business's material separate from the instructions, and the material is treated as data, never as commands. Filters on the way in and on the way out catch attempts to pull out the instructions or steer the assistant off topic.
 
-## Bezbednost
+Each request goes to a primary language model, with a second provider as a fallback. If the first one is down or too slow, the second one answers, so an outage at one provider does not take the assistant offline.
 
-- Magic link i Google OAuth login, plus **WebAuthn passkeys** za admin pristup
-- **Enkripcija po tenantu:** svaki biznis ima sopstveni data key (envelope encryption), a osetljivi podaci integracija su šifrovani u bazi
-- Stroga CSP pravila, izolovan widget, origin allowlist po tenantu, rate limiting
-- WhatsApp stack na zasebnom serveru iza Cloudflare Tunnel-a sa trostrukom autentifikacijom (Access token, HMAC potpis, API ključ), LUKS enkriptovan disk i šifrovani backup-i
-- Više internih bezbednosnih audita, a svi nalazi su zatvoreni pre produkcije
-
-## Arhitektura
+## Architecture
 
 ```
-Sajt klijenta ─┐
-WhatsApp ──────┼──▶ Cloudflare Worker (API) ──▶ D1 · KV · R2 · Vectorize · Workers AI
-Instagram ─────┘            │                         │
-                            ├──▶ LLM provajderi       └──▶ Google Calendar · Resend
-                            │
-Dashboard (Astro na CF Pages) ◀── vlasnik biznisa
+Business website (widget)
+        |
+        v
+API Worker (Hono) ---> D1, KV, R2, Vectorize, Workers AI
+        |
+        +---> language models (primary and fallback)
+        +---> email
+
+Business owner ---> Dashboard Worker (Astro) ---> same database, and the API for files and the knowledge base
 ```
 
-## Screenshots
+- The API is a Cloudflare Worker. D1 holds the data, KV handles caching and rate limits, R2 stores files, and Vectorize holds the knowledge base, with a separate index for each business. Keyword search has its own database.
+- The widget is plain TypeScript inside a closed Shadow DOM, with no framework, and it stays under 25 KB compressed. The host page's styles cannot break it, and it cannot break the host page.
+- The dashboard is Astro, rendered on a Worker. Owners sign in with a link sent by email, with Google, or with a passkey.
+- New data stores are created in the EU.
+- The main database is exported every day, encrypted, and kept in storage that cannot be overwritten for a fixed period, with a second copy at another provider. Restoring from a backup has been tested.
 
-### Widget (desktop)
+## How it is built and shipped
 
-![Widget desktop](./screenshots/03-widget-desktop.webp)
+- Every change is a pull request. CI runs type-aware linting, type checks, tests, a dependency audit and a secret scan over the whole history before anything can be merged.
+- Tests run inside the real Workers runtime, against a local database with every migration applied. Each route has tests for who may call it and who gets refused.
+- Every merge deploys to a staging environment with its own database.
+- A production release is uploaded next to the running version without traffic, smoke-tested on its own, and only then switched on. If the check fails, the previous version keeps serving.
+- Database changes are made in two steps, adding first and removing later, so the version that is running keeps working while the next one goes out.
+- Decisions that would otherwise look strange are written down as short records in the repository, along with a glossary of the terms the code uses.
 
-### Widget i landing (mobile)
+## Stack
 
-<p>
-  <img src="./screenshots/04-widget-mobile.webp" width="280" alt="Widget mobile">
-  &nbsp;
-  <img src="./screenshots/02-landing-mobile.webp" width="280" alt="Landing mobile">
-</p>
-
-### Dashboard login
-
-![Dashboard login](./screenshots/05-dashboard-login.webp)
-
----
-
-Kod je privatan. Ovaj repo služi samo kao prikaz projekta.
+TypeScript, Cloudflare Workers, D1, KV, R2, Vectorize, Workers AI, Hono, Astro, Vitest, Resend.
